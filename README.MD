@@ -1,6 +1,6 @@
 # 📦 TMB Order System
 
-Sistema de gestão de pedidos baseado em arquitetura orientada a eventos (EDA). O projeto utiliza **.NET 10** no backend, **Next.js 15** no frontend e **Azure Service Bus** para mensageria, totalmente orquestrado via **Docker**.
+Sistema de gestão de pedidos baseado em arquitetura orientada a eventos (EDA). O projeto utiliza **.NET 10** no backend, **Next.js 16** no frontend e **Azure Service Bus** para mensageria, totalmente orquestrado via **Docker**.
 
 ## 🚀 Tecnologias
 
@@ -11,6 +11,45 @@ Sistema de gestão de pedidos baseado em arquitetura orientada a eventos (EDA). 
 * **Infraestrutura:** Docker & Docker Compose.
 * **Testes:** xUnit + EF Core In-Memory.
 * **Extra:** Módulo de IA/Analytics (Processamento de Linguagem Natural).
+
+## 🏛️ Arquitetura e Fluxo (EDA)
+
+O sistema foi desenhado para ser resiliente e escalável, utilizando o desacoplamento entre a recepção do pedido e o seu processamento.
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário (Frontend)
+    participant A as API (.NET 10)
+    participant B as Banco (Postgres)
+    participant S as Azure Service Bus
+    participant W as Worker (Background)
+
+    U->>A: POST /orders
+    A->>B: Salva Pedido (Pending)
+    A->>S: Publica OrderCreated
+    A-->>U: 201 Created
+    S->>W: Consome Mensagem
+    W->>B: Update Status (Processing)
+    Note over W: Aguarda 5s (Simulação)
+    W->>B: Update Status (Completed)
+    U->>A: GET /orders (Polling)
+    A->>B: Select Orders
+    A-->>U: Exibe Status Atualizado
+```
+
+### Decisões Técnicas de Senioridade:
+
+* **Idempotência:** O Worker valida o estado atual do pedido antes de iniciar o processamento, evitando duplicidade em caso de reentrega de mensagens pela fila.
+* **Shared Kernel:** Centralização de modelos em `Tmb.Shared` para garantir consistência entre serviços.
+* **Transição de Estados:** Fluxo obrigatório `Pendente → Processando → Finalizado` controlado via Worker.
+
+## 🛠️ Developer Experience (DX)
+
+Projeto focado em facilidade de manutenção e diagnóstico:
+
+* **Swagger UI:** Documentação interativa disponível em `/swagger`.
+* **Health Checks:** Monitoramento em tempo real da API, Banco e Fila em `/health`.
+* **Logs Estruturados:** Rastreabilidade total do ciclo de vida do pedido via console/Docker logs.
 
 ## ⚙️ Pré-requisitos
 
@@ -28,7 +67,7 @@ cd tmb-order-system
 
 ### 2. Configure as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto (`tmb-order-system/.env`):
+Crie um arquivo `.env` na raiz do projeto:
 
 ```env
 POSTGRES_USER=admin
@@ -36,7 +75,7 @@ POSTGRES_PASSWORD=adminpassword
 POSTGRES_DB=tmb_orders_db
 PGADMIN_DEFAULT_EMAIL=admin@tmb.com
 PGADMIN_DEFAULT_PASSWORD=admin
-# Deixe vazio para rodar em modo Mock (sem Azure), ou insira sua string de conexão real
+# Deixe vazio para rodar em modo Mock (sem Azure)
 AZURE_SERVICE_BUS_CONNECTION_STRING=
 ```
 
@@ -54,48 +93,20 @@ docker compose up -d --build
 
 ## 🧪 Como Rodar os Testes
 
-Para executar os testes unitários do backend (validação de domínio e regras de negócio):
-
 ```bash
 dotnet test
 ```
 
-## 🏗️ Arquitetura
-
-O sistema é composto por 3 serviços principais desacoplados:
-
-### API (Tmb.Api):
-
-* Recebe requisições HTTP (POST/GET).
-* Salva o pedido no Postgres com status `Pending`.
-* Envia um evento `OrderCreated` para a fila do Service Bus.
-* Fornece endpoint de IA para processamento de perguntas em linguagem natural.
-
-### Worker (Tmb.Worker):
-
-* Consome a fila em background de forma assíncrona.
-* Garante idempotência (não reprocessa pedidos já finalizados).
-* Simula o processamento: `Pending` → `Processing` → (5s) → `Completed`.
-
-### Frontend (tmb-frontend):
-
-* Interface moderna em Next.js.
-* Exibe listagem e detalhes com atualização em tempo real (Polling).
-* Inclui Chatbot de Analytics integrado.
-
 ## 🧠 Módulo de IA (Bônus)
 
-No topo da tela inicial, há uma barra de perguntas ("Pergunte aos seus dados"). Experimente:
+No topo da tela inicial, há uma barra de perguntas ("Pergunte aos seus dados"). O sistema utiliza NLP simples para converter intenções em queries SQL reais:
 
-* "Quantos pedidos pendentes?"
-* "Qual o valor total vendido?"
-* "Média dos pedidos?"
-
-O sistema interpreta a intenção e converte em queries SQL seguras para responder em tempo real.
+* *"Quantos pedidos pendentes?"*
+* *"Qual o valor total vendido?"*
 
 ## 📂 Estrutura do Projeto
 
-```
+```text
 tmb-order-system/
 ├── src/
 │   ├── backend/
@@ -103,10 +114,10 @@ tmb-order-system/
 │   │   ├── Tmb.Worker/           # Worker Service (.NET 10)
 │   │   ├── Tmb.Shared/           # Models e DTOs compartilhados
 │   │   └── Tmb.Api.Tests/        # Testes Unitários (xUnit)
-│   └── frontend/                 # Aplicação Next.js 16
-├── docker-compose.yml            # Orquestração dos serviços
-├── .env                          # Variáveis de ambiente
-└── README.md                     # Documentação
+│   └── frontend/                 # Aplicação Next.js 15
+├── docker-compose.yml            # Orquestração
+├── .env                          # Variáveis sensíveis
+└── README.md                     # Documentação Principal
 ```
 
 ## 🛠️ Desenvolvimento Local (Sem Docker)
@@ -137,25 +148,9 @@ npm run dev
 
 ## 🐛 Troubleshooting
 
-### 1. Erro de conexão com PostgreSQL:
+* **Erro de conexão com PostgreSQL:** Verifique se o container está saudável (`docker ps`).
+* **Worker ocioso:** Certifique-se de que a string de conexão do Azure Service Bus está correta no `.env`.
 
-* Verifique se o container está rodando: `docker ps`.
-* Se rodar localmente (fora do Docker), altere a connection string no `appsettings.json` para `localhost` em vez de `postgres`.
+---
 
-### 2. Frontend não carrega ou dá erro de build:
-
-Limpe o cache do Next.js e Docker:
-
-```bash
-docker compose down -v
-docker compose up -d --build
-```
-
-### 3. Worker não processa mensagens:
-
-* Verifique os logs: `docker logs tmb_worker`.
-* Se não configurou a connection string do Azure no `.env`, o worker rodará em modo ocioso (apenas logando o aviso).
-
-## 📝 Licença
-
-Este projeto foi desenvolvido como Prova de Conceito (POC).
+**Powered by Thiago Luciano**
