@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/Tmb.Api.Tests/Tmb.Api.Tests.csproj" />
+    <Project Path="src/backend/Tmb.Api/Tmb.Api.csproj" />
+    <Project Path="src/backend/Tmb.Shared/Tmb.Shared.csproj" />
+    <Project Path="src/backend/Tmb.Worker/Tmb.Worker.csproj" />
+  </Folder>
+</Solution>
