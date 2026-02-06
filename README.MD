@@ -5,7 +5,7 @@ Sistema de gestão de pedidos baseado em arquitetura orientada a eventos (EDA). 
 ## 🚀 Tecnologias
 
 * **Backend:** .NET 10 (Preview), Entity Framework Core, Health Checks.
-* **Frontend:** Next.js 15 (App Router), TailwindCSS v4.
+* **Frontend:** Next.js 16 (App Router), TailwindCSS v4.
 * **Banco de Dados:** PostgreSQL.
 * **Mensageria:** Azure Service Bus (Producer/Consumer).
 * **Infraestrutura:** Docker & Docker Compose.
@@ -103,7 +103,7 @@ tmb-order-system/
 │   │   ├── Tmb.Worker/           # Worker Service (.NET 10)
 │   │   ├── Tmb.Shared/           # Models e DTOs compartilhados
 │   │   └── Tmb.Api.Tests/        # Testes Unitários (xUnit)
-│   └── frontend/                 # Aplicação Next.js 15
+│   └── frontend/                 # Aplicação Next.js 16
 ├── docker-compose.yml            # Orquestração dos serviços
 ├── .env                          # Variáveis de ambiente
 └── README.md                     # Documentação
